@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datawatcher"
+version = "0.1.0"
+description = "Watching data changes and record to list."
+readme = "README.md"
+authors = [
+    { name = "王炳辉", email = "binghui.wang@foxmail.com" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Time-Coder/datawatcher"
+Repository = "https://github.com/Time-Coder/datawatcher.git"
