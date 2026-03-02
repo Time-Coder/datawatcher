@@ -14,7 +14,6 @@ class DataWatcher:
         
         self._running = False
         self._interval: float = 1.0
-        self._should_clear: bool = False
         self._thread: Optional[threading.Thread] = None
         self._cmd_queue: SimpleQueue = SimpleQueue()
         self._lock: threading.Lock = threading.Lock()
@@ -24,11 +23,6 @@ class DataWatcher:
             raise TypeError("func must be a callable")
         
         with self._lock:
-            if self._should_clear:
-                self._tasks.clear()
-                self._history.clear()
-                self._should_clear = False
-
             self._tasks[key] = func
 
     def unwatch(self, key: str):
@@ -41,7 +35,6 @@ class DataWatcher:
         with self._lock:
             self._tasks.clear()
             self._history.clear()
-            self._should_clear = False
 
     def _run_loop(self):
         while True:
@@ -54,7 +47,7 @@ class DataWatcher:
                 with self._lock:
                     current_time = time.perf_counter()
                     self._time_list.append(current_time - start_time)
-                    for key, func in self._tasks:
+                    for key, func in self._tasks.items():
                         if not self._running:
                             break
 
@@ -81,7 +74,6 @@ class DataWatcher:
 
     def stop(self):
         self._running = False
-        self._should_clear = True
         
     def time_list(self)->List[float]:
         with self._lock:
