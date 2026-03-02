@@ -1,40 +1,63 @@
 import threading
 import time
-from collections import defaultdict
 from queue import SimpleQueue
 import traceback
+from dataclasses import dataclass, field
 from typing import Callable, Any, List, Dict, Optional
+
+
+@dataclass
+class Task:
+    func: Callable[[], Any]
+    callback: Optional[Callable[[Any], Any]] = None
+    history: List[Any] = field(default_factory=list)
+
+    def clear(self):
+        self.history.clear()
+
+    def next(self):
+        try:
+            result = self.func()
+            self.history.append(result)
+            if self.callback is not None:
+                self.callback(result)
+        except BaseException as e:
+            traceback.print_exc()
+            self.history.append(None)
 
 
 class DataWatcher:
     def __init__(self):
-        self._tasks: Dict[str, Callable] = {}
-        self._history: Dict[str, List[Any]] = defaultdict(list)
+        self._tasks: Dict[str, Task] = {}
         self._time_list: List[float] = []
         
-        self._running = False
+        self._running: bool = False
         self._interval: float = 1.0
         self._thread: Optional[threading.Thread] = None
         self._cmd_queue: SimpleQueue = SimpleQueue()
         self._lock: threading.Lock = threading.Lock()
 
-    def watch(self, func: Callable, key: str):
+    def watch(self, func: Callable, key: str, callback: Optional[Callable] = None):
         if not callable(func):
             raise TypeError("func must be a callable")
         
+        if callback is not None and not callable(callback):
+            raise TypeError("callback must be a callable")
+        
         with self._lock:
-            self._tasks[key] = func
+            self._tasks[key] = Task(func, callback)
+            if self._running:
+                self._tasks[key].history = [None] * len(self._time_list)
 
     def unwatch(self, key: str):
         with self._lock:
             if key in self._tasks:
                 del self._tasks[key]
-                del self._history[key]
 
     def clear(self):
         with self._lock:
             self._tasks.clear()
-            self._history.clear()
+            self._time_list.clear()
 
     def _run_loop(self):
         while True:
@@ -42,21 +65,16 @@ class DataWatcher:
             if not cmd:
                 break
 
-            start_time = time.perf_counter()
+            start_time = None
             while self._running:
                 with self._lock:
                     current_time = time.perf_counter()
-                    self._time_list.append(current_time - start_time)
-                    for key, func in self._tasks.items():
-                        if not self._running:
-                            break
+                    if start_time is None:
+                        start_time = current_time
 
-                        try:
-                            result = func()
-                            self._history[key].append(result)
-                        except BaseException as e:
-                            traceback.print_exc()
-                            self._history[key].append(None)
+                    self._time_list.append(current_time - start_time)
+                    for task in self._tasks.values():
+                        task.next()
                         
                 time.sleep(self._interval)
 
@@ -70,18 +88,22 @@ class DataWatcher:
             self._thread = threading.Thread(target=self._run_loop, daemon=True)
             self._thread.start()
 
+        self._time_list.clear()
+        for task in self._tasks.values():
+            task.clear()
+
         self._cmd_queue.put(True)
 
     def stop(self):
         self._running = False
         
-    def time_list(self)->List[float]:
+    def time_list(self) -> List[float]:
         with self._lock:
-            return list(self._time_list)
+            return self._time_list
         
-    def value_list(self, key: str)->List[Any]:
+    def value_list(self, key: str) -> List[Any]:
         with self._lock:
-            return list(self._history[key])
+            return self._tasks[key].history
 
     def __getitem__(self, key: str) -> List[Any]:
         return self.value_list(key)

@@ -102,7 +102,7 @@ Main class for monitoring data changes.
 Methods
 +++++++
 
-* ``watch(func: Callable, key: str)`` - Register a function to monitor
+* ``watch(func: Callable[[], Any], key: str, callback: Optional[Callable[[Any], Any]] = None)`` - Register a function to monitor
 * ``unwatch(key: str)`` - Remove a monitored function  
 * ``clear()`` - Clear all monitored functions and history
 * ``start(interval: float = 1.0)`` - Start monitoring with specified interval
