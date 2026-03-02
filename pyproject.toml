@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "datawatcher"
 version = "0.1.0"
 description = "Watching data changes and record to list."
-readme = "README.rst"
+readme = "README.md"
 authors = [
     { name = "王炳辉 (Bing-Hui WANG)", email = "binghui.wang@foxmail.com" }
 ]
